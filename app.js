@@ -17,6 +17,12 @@ const session = {
 
 /* ---------- helpers ---------- */
 
+// The user's name, safe to place inside HTML.
+function userName() {
+  const n = (session.profile && session.profile.name) || "";
+  return n.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
 function render(html) {
   app.innerHTML = html;
 }
@@ -38,7 +44,8 @@ function saveHistory(entry) {
 /* ---------- 1. Profile screen ---------- */
 
 function showProfile() {
-  const saved = JSON.parse(localStorage.getItem("stressease_profile") || "null");
+  // Always start with empty fields: the name is asked from every new visitor.
+  const saved = null;
 
   render(`
     <div class="card">
@@ -69,7 +76,6 @@ function showProfile() {
       return;
     }
     session.profile = { name, age, gender };
-    localStorage.setItem("stressease_profile", JSON.stringify(session.profile));
     showIntro();
   };
 }
@@ -79,7 +85,7 @@ function showProfile() {
 function showIntro() {
   render(`
     <div class="card">
-      <h2>Hi ${session.profile.name} 🌿</h2>
+      <h2>Hi ${userName()} 🌿</h2>
       <p>You'll answer 10 short questions about the last month, then a short
       safety questionnaire.</p>
       <p class="muted">There are no right or wrong answers. Be honest with yourself.</p>
@@ -201,10 +207,10 @@ function onBaselineDone(score, answers, nowStress) {
 
   render(`
     <div class="card">
-      <h2>Your Stress Level</h2>
+      <h2>${userName()}, here is your stress level</h2>
       <p class="result-score">${score}<span class="muted" style="font-size:1rem">/${PSS_MAX_SCORE}</span></p>
       <p class="center"><span class="badge ${className}">${level} Stress</span></p>
-      <p>Before we start a breathing practice, we need to ask a few safety questions.</p>
+      <p>${userName()}, before we start a breathing practice, we need to ask a few safety questions.</p>
       <button class="btn btn-accent" id="safetyBtn">Continue</button>
     </div>
   `);
@@ -306,7 +312,7 @@ function stopBgMusic() {
 function showNotRecommended() {
   render(`
     <div class="card">
-      <h2>Not Recommended</h2>
+      <h2>Thank you, ${userName()}</h2>
       <div class="alert">
         <p>Based on your responses to the safety and suitability questionnaire,
         none of the available Prāṇāyāma techniques can currently be recommended
@@ -344,7 +350,7 @@ function onSafetyPassed(possible) {
   function draw() {
     render(`
       <div class="card">
-        <h2>Choose Your Practice</h2>
+        <h2>${userName()}, choose your practice</h2>
         <p>Based on your responses, you can only follow the following
         ${possible.length === 1 ? "Prāṇāyāma technique" : "Prāṇāyāma techniques"}.
         Select the one you prefer:</p>
@@ -382,7 +388,7 @@ function showPractice(technique) {
   render(`
     <div class="card">
       <h2>${technique.name}</h2>
-      <p class="muted">Watch the video and follow along. You can play it again as many times as you like.
+      <p class="muted">${userName()}, watch the video and follow along. You can play it again as many times as you like.
       Click Next when you have finished.</p>
       <video id="practiceVideo" class="practice-video" controls playsinline
              src="${encodeURI(technique.video)}"></video>
@@ -432,7 +438,7 @@ function onPracticeStressDone(afterNow) {
 
   render(`
     <div class="card">
-      <h2>Before vs After</h2>
+      <h2>${userName()}, your before vs after</h2>
       <p class="muted center">${session.technique}</p>
       <div class="compare">
         <div class="box">
@@ -454,11 +460,7 @@ function onPracticeStressDone(afterNow) {
 /* ---------- boot ---------- */
 
 (function init() {
-  const saved = JSON.parse(localStorage.getItem("stressease_profile") || "null");
-  if (saved) {
-    session.profile = saved;
-    showIntro();
-  } else {
-    showProfile();
-  }
+  // Remove any profile saved by older versions of the site.
+  localStorage.removeItem("stressease_profile");
+  showProfile();
 })();
