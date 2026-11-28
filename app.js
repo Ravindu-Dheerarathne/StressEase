@@ -193,22 +193,6 @@ function runAssessment(title, onComplete) {
 
 /* ---------- 3. Baseline stress result ---------- */
 
-function subscaleHtml(answers) {
-  const helpless = subscaleScore(answers, PSS_HELPLESSNESS_ITEMS);
-  const efficacy = subscaleScore(answers, PSS_SELF_EFFICACY_ITEMS);
-  return `
-    <div class="compare">
-      <div class="box">
-        <div class="num">${helpless}<span class="muted" style="font-size:1rem">/${PSS_HELPLESSNESS_ITEMS.length * 4}</span></div>
-        <div class="muted">Perceived Helplessness</div>
-      </div>
-      <div class="box">
-        <div class="num">${efficacy}<span class="muted" style="font-size:1rem">/${PSS_SELF_EFFICACY_ITEMS.length * 4}</span></div>
-        <div class="muted">Perceived Self-Efficacy<br/>(stress from low coping)</div>
-      </div>
-    </div>`;
-}
-
 function onBaselineDone(score, answers, nowStress) {
   session.baselineNow = nowStress;
   session.baselineScore = score;
@@ -221,8 +205,6 @@ function onBaselineDone(score, answers, nowStress) {
       <h2>Your Stress Level</h2>
       <p class="result-score">${score}<span class="muted" style="font-size:1rem">/${PSS_MAX_SCORE}</span></p>
       <p class="center"><span class="badge ${className}">${level} Stress</span></p>
-      ${subscaleHtml(answers)}
-      <p class="center muted">Stress you reported right now: <strong>${nowStress}/10</strong></p>
       <p>Let's do a short yoga routine designed for your stress level.</p>
       <button class="btn btn-accent" id="yogaBtn">Start Yoga Routine</button>
     </div>
