@@ -1,5 +1,5 @@
 /* ============================================================
-   DATA FILE — all questions, scores, thresholds, yoga routines.
+   DATA FILE — PSS-10 questions, scores and stress levels.
    - Stress set: PSS-10 (Perceived Stress Scale, Cohen et al., 1983).
    ============================================================ */
 
@@ -56,35 +56,3 @@ function getStressLevel(score) {
   return { level: "High", className: "high" };
 }
 
-/* -------- Yoga routines, one per stress level --------
-   DUMMY content. Replace the src paths with your real files.
-*/
-const YOGA_ROUTINES = {
-  Low: {
-    title: "Gentle Relaxation Routine",
-    video: "1.mp4",
-    steps: [
-      { image: "p1.jpeg", caption: "Dummy Pose 1 — Deep breathing. Hold 30s." },
-      { image: "p2.jpg", caption: "Dummy Pose 2 — Neck rolls. Hold 30s." },
-      { image: "p3.jpg", caption: "Dummy Pose 3 — Shoulder stretch. Hold 30s." },
-    ],
-  },
-  Moderate: {
-    title: "Calming Stretch Routine",
-    video: "1.mp4",
-    steps: [
-      { image: "p1.jpeg", caption: "Dummy Pose 1 — Child's pose. Hold 45s." },
-      { image: "p2.jpg", caption: "Dummy Pose 2 — Seated forward bend. Hold 45s." },
-      { image: "p3.jpg", caption: "Dummy Pose 3 — Cat-cow stretch. 10 reps." },
-    ],
-  },
-  High: {
-    title: "Deep Unwind Routine",
-    video: "2.mp4",
-    steps: [
-      { image: "p1.jpeg", caption: "Dummy Pose 1 — Guided breathing. 2 min." },
-      { image: "p2.jpg", caption: "Dummy Pose 2 — Reclining twist. Hold 60s each side." },
-      { image: "p3.jpg", caption: "Dummy Pose 3 — Corpse pose (Savasana). 3 min." },
-    ],
-  },
-};

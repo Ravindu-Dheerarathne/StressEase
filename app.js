@@ -1,7 +1,7 @@
 /* ============================================================
    APP LOGIC — drives all screens and the full flow.
    Flow:
-   profile -> PSS-10 (before) -> yoga -> PSS-10 (after) -> results
+   profile -> PSS-10 -> score -> safety screening -> result
    ============================================================ */
 
 const app = document.getElementById("app");
@@ -80,9 +80,8 @@ function showIntro() {
   render(`
     <div class="card">
       <h2>Hi ${session.profile.name} 🌿</h2>
-      <p>You'll answer 10 short questions about the last month, then follow
-      a short yoga routine, and finally answer the same questions to see
-      if you feel better.</p>
+      <p>You'll answer 10 short questions about the last month, then a short
+      safety questionnaire.</p>
       <p class="muted">There are no right or wrong answers. Be honest with yourself.</p>
       <button class="btn" id="startBtn">Start Assessment</button>
     </div>
@@ -147,7 +146,7 @@ function runQuiz(questions, title, onComplete) {
 }
 
 /* ---------- Extra question: "stress right now" (0-10) ----------
-   Separate from PSS-10. Never affects the score, level or yoga choice.
+   Separate from PSS-10. Never affects the PSS-10 score or level.
    Asked after the 10 PSS-10 questions, then results are shown. */
 
 function askStressNow(title, onDone) {
@@ -205,104 +204,247 @@ function onBaselineDone(score, answers, nowStress) {
       <h2>Your Stress Level</h2>
       <p class="result-score">${score}<span class="muted" style="font-size:1rem">/${PSS_MAX_SCORE}</span></p>
       <p class="center"><span class="badge ${className}">${level} Stress</span></p>
-      <p>Let's do a short yoga routine designed for your stress level.</p>
-      <button class="btn btn-accent" id="yogaBtn">Start Yoga Routine</button>
+      <p>Before we start a breathing practice, we need to ask a few safety questions.</p>
+      <button class="btn btn-accent" id="safetyBtn">Continue</button>
     </div>
   `);
-  document.getElementById("yogaBtn").onclick = () => showYoga(level);
+  document.getElementById("safetyBtn").onclick = () => runSafetyScreening(level);
 }
 
-/* ---------- 4. Yoga routine ---------- */
+/* ---------- Safety screening (PRANA CARE) ---------- */
 
-function showYoga(level) {
-  const routine = YOGA_ROUTINES[level];
-  let step = 0;
+function runSafetyScreening(level) {
+  let current = 0;
+  // Which technique sections are still possible (B, C, D).
+  const allowed = { B: true, C: true, D: true };
+  const sectionOf = (i) => SAFETY_QUESTIONS[i].section.charAt(0);
+
+  // Move to the next question to ask, or finish.
+  function advance(failedSection) {
+    let next = current + 1;
+    if (failedSection) {
+      // Skip the remaining questions of the section that was ruled out.
+      while (next < SAFETY_QUESTIONS.length && sectionOf(next) === failedSection) next++;
+    }
+    if (next >= SAFETY_QUESTIONS.length) {
+      finish();
+    } else {
+      current = next;
+      draw();
+    }
+  }
+
+  function finish() {
+    const possible = Object.keys(allowed)
+      .filter((k) => allowed[k])
+      .map((k) => SAFETY_TECHNIQUES[k]); // objects: { name, video }
+    if (possible.length === 0) {
+      showNotRecommended();
+    } else {
+      onSafetyPassed(possible);
+    }
+  }
 
   function draw() {
-    const s = routine.steps[step];
-    const pct = Math.round((step / routine.steps.length) * 100);
+    const q = SAFETY_QUESTIONS[current];
+    const pct = Math.round((current / SAFETY_QUESTIONS.length) * 100);
     render(`
       <div class="card">
         <div class="progress"><div class="progress-bar" style="width:${pct}%"></div></div>
-        <h2>${routine.title}</h2>
-        <p class="muted">Step ${step + 1} of ${routine.steps.length}</p>
-
-        <img class="yoga-img" src="${s.image}" alt="pose"
-             onerror="this.outerHTML='<div class=&quot;yoga-img&quot; style=&quot;padding:3rem;text-align:center;color:#7a8a90&quot;>[ Dummy pose image placeholder ]</div>'" />
-
-        <p><strong>${s.caption}</strong></p>
-
-        <video class="yoga-media" controls src="${routine.video}"
-               onerror="this.outerHTML='<div class=&quot;yoga-media&quot; style=&quot;padding:1rem;text-align:center;color:#fff&quot;>[ Dummy video instruction placeholder ]</div>'">
-        </video>
-
-        <div class="row">
-          ${step > 0 ? `<button class="btn btn-ghost" id="prevBtn">Previous</button>` : ""}
-          <button class="btn" id="nextBtn">
-            ${step === routine.steps.length - 1 ? "Done — Re-check Stress" : "Next Pose"}
-          </button>
+        <p class="muted">Safety Screening — Question ${current + 1} of ${SAFETY_QUESTIONS.length}</p>
+        <p class="muted"><em>${q.section}</em></p>
+        <h3>${q.text}</h3>
+        <div>
+          ${SAFETY_ANSWERS.map((a) => `<button class="option" data-a="${a}">${a}</button>`).join("")}
         </div>
       </div>
     `);
 
-    const prev = document.getElementById("prevBtn");
-    if (prev) prev.onclick = () => { step--; draw(); };
+    document.querySelectorAll(".option").forEach((btn) => {
+      btn.onclick = () => {
+        const section = sectionOf(current);
+        if (btn.dataset.a === SAFETY_SAFE_ANSWER) {
+          advance(null);
+        } else if (section === "A") {
+          // General safety: Yes or Not sure stops everything.
+          showNotRecommended();
+        } else {
+          // Technique section: rule out this technique, skip to next section.
+          allowed[section] = false;
+          advance(section);
+        }
+      };
+    });
+  }
 
-    document.getElementById("nextBtn").onclick = () => {
-      if (step === routine.steps.length - 1) {
-        runAssessment("Stress Check (After)", onPostDone);
-      } else {
-        step++;
+  draw();
+}
+
+/* ---------- Background music (only on the "not recommended" page) ---------- */
+
+let bgMusic = null;
+
+function startBgMusic() {
+  stopBgMusic();
+  bgMusic = new Audio("relax-music.mp3");
+  bgMusic.loop = true;
+  bgMusic.volume = 0.3;
+  // Browsers may block autoplay. If so, the user can press the music button.
+  bgMusic.play().catch(() => {
+    const btn = document.getElementById("musicBtn");
+    if (btn) btn.textContent = "🔇 Play calming music";
+  });
+}
+
+function stopBgMusic() {
+  if (bgMusic) {
+    bgMusic.pause();
+    bgMusic = null;
+  }
+}
+
+function showNotRecommended() {
+  render(`
+    <div class="card">
+      <h2>Not Recommended</h2>
+      <div class="alert">
+        <p>Based on your responses to the safety and suitability questionnaire,
+        none of the available Prāṇāyāma techniques can currently be recommended
+        through this application.</p>
+        <p style="margin-bottom:0">Your safety is important. Please consult a qualified
+        healthcare professional before starting any breathing practice.</p>
+      </div>
+      <div class="row">
+        <button class="btn btn-ghost" id="restartBtn">Start Over</button>
+        <button class="btn btn-ghost" id="musicBtn">🔊 Music on</button>
+      </div>
+    </div>
+  `);
+  document.getElementById("restartBtn").onclick = () => {
+    stopBgMusic();
+    showIntro();
+  };
+  document.getElementById("musicBtn").onclick = () => {
+    const btn = document.getElementById("musicBtn");
+    if (!bgMusic || bgMusic.paused) {
+      if (!bgMusic) startBgMusic(); else bgMusic.play();
+      btn.textContent = "🔊 Music on";
+    } else {
+      bgMusic.pause();
+      btn.textContent = "🔇 Music off";
+    }
+  };
+  startBgMusic();
+}
+
+// General safety passed and at least one technique is possible.
+function onSafetyPassed(possible) {
+  let chosen = null;
+
+  function draw() {
+    render(`
+      <div class="card">
+        <h2>Choose Your Practice</h2>
+        <p>Based on your responses, you can only follow the following
+        ${possible.length === 1 ? "Prāṇāyāma technique" : "Prāṇāyāma techniques"}.
+        Select the one you prefer:</p>
+        <div>
+          ${possible
+            .map(
+              (t, i) =>
+                `<button class="option ${chosen === i ? "selected" : ""}" data-i="${i}">${t.name}</button>`
+            )
+            .join("")}
+        </div>
+        <button class="btn btn-accent" id="startPractice" ${chosen == null ? "disabled" : ""}>Start Practice</button>
+      </div>
+    `);
+
+    document.querySelectorAll(".option").forEach((btn) => {
+      btn.onclick = () => {
+        chosen = parseInt(btn.dataset.i, 10);
         draw();
-      }
+      };
+    });
+    document.getElementById("startPractice").onclick = () => {
+      if (chosen != null) showPractice(possible[chosen]);
     };
   }
 
   draw();
 }
 
-/* ---------- 5. Re-test result + comparison ---------- */
+/* ---------- Practice video ---------- */
 
-function onPostDone(score, answers, nowStress) {
-  session.postNow = nowStress;
-  session.postScore = score;
-  session.postAnswers = answers;
-  session.postLevel = getStressLevel(score);
+function showPractice(technique) {
+  session.technique = technique.name;
 
-  const before = session.baselineScore;
-  const after = score;
-  const diff = before - after;
+  render(`
+    <div class="card">
+      <h2>${technique.name}</h2>
+      <p class="muted">Watch the video and follow along. You can play it again as many times as you like.
+      Click Next when you have finished.</p>
+      <video id="practiceVideo" class="practice-video" controls playsinline
+             src="${encodeURI(technique.video)}"></video>
+      <p class="muted" id="videoHint">Next unlocks when the video has finished.</p>
+      <button class="btn" id="practiceNext" disabled>Next</button>
+    </div>
+  `);
+
+  const video = document.getElementById("practiceVideo");
+  const nextBtn = document.getElementById("practiceNext");
+  const unlock = () => {
+    nextBtn.disabled = false;
+    document.getElementById("videoHint").textContent = "You can play the video again, or click Next.";
+  };
+  video.onended = unlock;
+  // If the video file cannot load, do not trap the user on this screen.
+  video.onerror = () => {
+    document.getElementById("videoHint").textContent = "The video could not be loaded. You can continue.";
+    unlock();
+  };
+
+  nextBtn.onclick = () => {
+    askStressNow("After Practice", onPracticeStressDone);
+  };
+}
+
+/* ---------- Final result: stress before vs after practice ---------- */
+
+function onPracticeStressDone(afterNow) {
+  session.afterNow = afterNow;
+  const before = session.baselineNow;
+  const diff = before - afterNow;
 
   let verdict, verdictClass;
   if (diff > 0) {
-    verdict = `Your stress went down by ${diff} point(s). Nice work! 🎉`;
+    verdict = `Your stress rating went down by ${diff} point(s). Nice work! 🎉`;
     verdictClass = "low";
   } else if (diff === 0) {
-    verdict = "Your stress stayed the same. Try the routine again later.";
+    verdict = "Your stress rating stayed the same.";
     verdictClass = "moderate";
   } else {
-    verdict = `Your stress went up by ${Math.abs(diff)} point(s). Consider resting or trying again.`;
+    verdict = `Your stress rating went up by ${Math.abs(diff)} point(s).`;
     verdictClass = "high";
   }
 
-  saveHistory({ ...session, date: new Date().toISOString(), referred: false });
+  saveHistory({ ...session, date: new Date().toISOString() });
 
   render(`
     <div class="card">
       <h2>Before vs After</h2>
+      <p class="muted center">${session.technique}</p>
       <div class="compare">
         <div class="box">
-          <div class="num">${before}<span class="muted" style="font-size:1rem">/${PSS_MAX_SCORE}</span></div>
-          <div class="muted">Before (${session.baselineLevel.level})</div>
+          <div class="num">${before}<span class="muted" style="font-size:1rem">/10</span></div>
+          <div class="muted">Before practice</div>
         </div>
         <div class="box">
-          <div class="num">${after}<span class="muted" style="font-size:1rem">/${PSS_MAX_SCORE}</span></div>
-          <div class="muted">After (${session.postLevel.level})</div>
+          <div class="num">${afterNow}<span class="muted" style="font-size:1rem">/10</span></div>
+          <div class="muted">After practice</div>
         </div>
       </div>
       <p class="center"><span class="badge ${verdictClass}">${verdict}</span></p>
-      <p class="center muted">Stress you reported right now (0–10, not part of the score):<br/>
-        Before: <strong>${session.baselineNow}</strong> &nbsp;→&nbsp; After: <strong>${nowStress}</strong></p>
       <button class="btn" id="againBtn">Do Another Assessment</button>
     </div>
   `);

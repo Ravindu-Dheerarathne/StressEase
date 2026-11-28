@@ -6,7 +6,6 @@ A simple stress assessment & relief website. Pure HTML + CSS + vanilla JavaScrip
 
 1. **Profile** — name, age, gender (saved in the browser).
 2. **Stress check (before)** — PSS-10 questionnaire (0–40) → stress level (Low / Moderate / High).
-3. **Yoga routine** — video + pose images chosen for the stress level.
 4. **Stress check (after)** — same PSS-10 questions again.
 5. **Before vs After** — shows whether stress decreased.
 
