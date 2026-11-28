@@ -210,6 +210,7 @@ function onBaselineDone(score, answers, nowStress) {
       <h2>${userName()}, here is your stress level</h2>
       <p class="result-score">${score}<span class="muted" style="font-size:1rem">/${PSS_MAX_SCORE}</span></p>
       <p class="center"><span class="badge ${className}">${level} Stress</span></p>
+      <p class="center muted">Stress rating you marked: <strong>${nowStress}/10</strong></p>
       <p>${userName()}, before we start a breathing practice, we need to ask a few safety questions.</p>
       <button class="btn btn-accent" id="safetyBtn">Continue</button>
     </div>
