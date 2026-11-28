@@ -44,39 +44,33 @@ function saveHistory(entry) {
 /* ---------- 1. Profile screen ---------- */
 
 function showProfile() {
-  // Always start with empty fields: the name is asked from every new visitor.
-  const saved = null;
-
+  // Only the name is asked. The field always starts empty.
   render(`
     <div class="card">
       <h2>Welcome 👋</h2>
-      <p class="muted">Let's start with a few basic details.</p>
+      <p class="muted">Please tell us your name to get started.</p>
       <label for="name">Name</label>
-      <input id="name" type="text" placeholder="Your name" value="${saved?.name || ""}" />
-      <label for="age">Age</label>
-      <input id="age" type="number" min="1" max="120" placeholder="Your age" value="${saved?.age || ""}" />
-      <label for="gender">Gender</label>
-      <select id="gender">
-        <option value="">Select...</option>
-        <option ${saved?.gender === "Male" ? "selected" : ""}>Male</option>
-        <option ${saved?.gender === "Female" ? "selected" : ""}>Female</option>
-        <option ${saved?.gender === "Other" ? "selected" : ""}>Other</option>
-        <option ${saved?.gender === "Prefer not to say" ? "selected" : ""}>Prefer not to say</option>
-      </select>
+      <input id="name" type="text" placeholder="Your name" autocomplete="off" />
       <button class="btn" id="profileNext">Continue</button>
     </div>
   `);
 
-  document.getElementById("profileNext").onclick = () => {
-    const name = document.getElementById("name").value.trim();
-    const age = document.getElementById("age").value.trim();
-    const gender = document.getElementById("gender").value;
-    if (!name || !age || !gender) {
-      alert("Please fill in all fields.");
+  const nameInput = document.getElementById("name");
+  nameInput.focus();
+
+  function submit() {
+    const name = nameInput.value.trim();
+    if (!name) {
+      alert("Please enter your name.");
       return;
     }
-    session.profile = { name, age, gender };
+    session.profile = { name };
     showIntro();
+  }
+
+  document.getElementById("profileNext").onclick = submit;
+  nameInput.onkeydown = (e) => {
+    if (e.key === "Enter") submit();
   };
 }
 
